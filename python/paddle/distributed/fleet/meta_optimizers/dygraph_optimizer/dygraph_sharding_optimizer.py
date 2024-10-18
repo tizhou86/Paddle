@@ -75,7 +75,7 @@ class DygraphShardingOptimizer:
                 "Do not support param_groups now, please set optimizer._parameter_list as a list of Parameter"
             )
         if not hasattr(optimizer, '_apply_optimize') or not callable(
-                optimizer._apply_optimize
+            optimizer._apply_optimize
         ):
             raise ValueError(
                 "the optimizer object should have _apply_optimize function"
@@ -122,8 +122,8 @@ class DygraphShardingOptimizer:
         self._forward_pre_hook_remove_helper = []
 
         if (
-                paddle.is_compiled_with_xpu()
-                and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
             assert (
                 not self.comm_overlap
@@ -276,7 +276,7 @@ class DygraphShardingOptimizer:
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
             assert (
-                    numel > 0
+                numel > 0
             ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
             sizes[rank] += numel
 
@@ -310,7 +310,7 @@ class DygraphShardingOptimizer:
 
         if hasattr(param, "main_grad"):
             assert (
-                    param._grad_ivar() is None
+                param._grad_ivar() is None
             ), "param.grad should be None when using main_grad"
             return param.main_grad
 
@@ -326,8 +326,8 @@ class DygraphShardingOptimizer:
 
         # sync here to guarantee cdnn_cluster parallel correct.
         if (
-                paddle.is_compiled_with_xpu()
-                and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
             paddle.device.synchronize()
 
@@ -449,7 +449,7 @@ class DygraphShardingOptimizer:
         raise NotImplementedError
 
     def minimize(
-            self, loss, startup_program=None, parameters=None, no_grad_set=None
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
@@ -474,7 +474,7 @@ class DygraphShardingOptimizer:
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
             assert (
-                    layers is not None
+                layers is not None
             ), "To Enable Stage1 Optimizer Broadcast Overlap Forward, layers cannot be None"
             self._layers = layers
             warnings.warn(
@@ -507,8 +507,8 @@ class DygraphShardingOptimizer:
             params_grads = []
             for param in target_param_list:
                 if (
-                        hasattr(param, "regularizer")
-                        and param.regularizer is not None
+                    hasattr(param, "regularizer")
+                    and param.regularizer is not None
                 ):
                     raise ValueError(
                         f"param {param.name} should not has the regularizer attribute"
@@ -571,8 +571,8 @@ class DygraphShardingOptimizer:
         while hasattr(inner_opt, attr_name):
             setattr(inner_opt, attr_name, value)
             if (
-                    hasattr(inner_opt, inner_opt_name)
-                    and getattr(inner_opt, inner_opt_name, None) is not None
+                hasattr(inner_opt, inner_opt_name)
+                and getattr(inner_opt, inner_opt_name, None) is not None
             ):
                 inner_opt = getattr(inner_opt, inner_opt_name, None)
             else:
@@ -601,7 +601,7 @@ class DygraphShardingOptimizerV2:
                 "Do not support param_groups now, please set optimizer._parameter_list as a list of Parameter"
             )
         if not hasattr(optimizer, '_apply_optimize') or not callable(
-                optimizer._apply_optimize
+            optimizer._apply_optimize
         ):
             raise ValueError(
                 "the optimizer object should have _apply_optimize function"
@@ -650,7 +650,7 @@ class DygraphShardingOptimizerV2:
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.sd_release_grads = (
-                pp_config.release_gradients or sharding_config.release_gradients
+            pp_config.release_gradients or sharding_config.release_gradients
         )
 
         # Check nccl reduce_avg setting
@@ -674,8 +674,8 @@ class DygraphShardingOptimizerV2:
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
 
         if (
-                paddle.is_compiled_with_xpu()
-                and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
             assert (
                 not self.comm_overlap
@@ -684,12 +684,12 @@ class DygraphShardingOptimizerV2:
         # Ensure acc_steps is greater than 0 when comm_overlap is used
         if self.comm_overlap:
             assert (
-                    acc_steps > 0
+                acc_steps > 0
             ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
 
         # Ensure pp_overlap and comm_overlap are not both True
         assert not (
-                self.pp_overlap and self.comm_overlap
+            self.pp_overlap and self.comm_overlap
         ), "pp_overlap and comm_overlap should not be True at the same time"
 
         # Determine the use of pipeline parallelism
@@ -709,7 +709,7 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
 
     def _set_all_gather_overlap_forward(
-            self, all_gather_overlap_forward, layers
+        self, all_gather_overlap_forward, layers
     ):
         self._all_gather_overlap_forward = all_gather_overlap_forward
         if self._all_gather_overlap_forward:
@@ -735,16 +735,19 @@ class DygraphShardingOptimizerV2:
         return fused_allreduce
 
     def _build_comm_buffers(
-            # Adjust group_size for fp32 parameters
-            self, acc_steps, group_size=512 * 1024 * 1024, free_grads_in_comm=False
+        # Adjust group_size for fp32 parameters
+        self,
+        acc_steps,
+        group_size=512 * 1024 * 1024,
+        free_grads_in_comm=False,
     ):
         if self.pp_overlap:
             return
         # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
         # improve the communication bandwidth of BKCL.
         if (
-                paddle.is_compiled_with_xpu()
-                and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
         ):
             group_size = 2**62
 
@@ -815,8 +818,8 @@ class DygraphShardingOptimizerV2:
         logger.debug("sharding start gradients sync")
         # sync here to guarantee cdnn_cluster parallel correct.
         if (
-                paddle.is_compiled_with_xpu()
-                and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
             paddle.device.synchronize()
 
@@ -907,7 +910,7 @@ class DygraphShardingOptimizerV2:
         raise NotImplementedError
 
     def minimize(
-            self, loss, startup_program=None, parameters=None, no_grad_set=None
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
@@ -986,8 +989,8 @@ class DygraphShardingOptimizerV2:
             params_grads = []
             for param in self._parameter_list:
                 if (
-                        hasattr(param, "regularizer")
-                        and param.regularizer is not None
+                    hasattr(param, "regularizer")
+                    and param.regularizer is not None
                 ):
                     raise ValueError(
                         f"param {param.name} should not has the regularizer attribute"
