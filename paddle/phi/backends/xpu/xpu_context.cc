@@ -15,6 +15,8 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 
 #include <memory>
+#include <cuda_runtime.h>
+#include <cuda.h>
 
 #include "glog/logging.h"
 
@@ -28,6 +30,7 @@
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
+#include "paddle/phi/core/xpu_cuda_stream.h"
 
 namespace xpu = baidu::xpu::api;
 

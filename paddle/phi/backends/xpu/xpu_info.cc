@@ -13,6 +13,8 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdlib>
 #include <string>
+#include <cuda_runtime.h>
+#include <cuda.h>
 
 #include "glog/logging.h"
 
@@ -106,6 +108,7 @@ void SetXPUDeviceId(int id) {
       GetXPUDeviceCount(),
       common::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaSetDevice(id));
 }
 
 static inline std::vector<std::string> Split(std::string const& original,
@@ -137,6 +140,17 @@ std::vector<int> GetXPUSelectedDevices() {
     }
   }
   return devices;
+}
+
+std::pair<int, int> GetXpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
+}
+
+void XpuStreamSync(cudaStream_t stream) {
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaStreamSynchronize(stream));
 }
 
 /**************************** Memory Management **************************/

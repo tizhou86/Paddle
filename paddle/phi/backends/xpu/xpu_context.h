@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/xpu_cuda_stream.h"
 
 namespace Eigen {
 struct DefaultDevice;
@@ -32,6 +33,8 @@ struct DefaultDevice;
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
+
+class XPUCUDAStream;
 
 class DenseTensor;
 class XPUContext : public DeviceContext,
@@ -43,6 +46,14 @@ class XPUContext : public DeviceContext,
   explicit XPUContext(const XPUPlace&, bool is_comm_context = 0);
 
   virtual ~XPUContext();
+
+  /*! \brief  Return XPUCUDAStream in the device context. */
+  XPUCUDAStream* xpu_cuda_stream() const;
+
+  // Note that this function is a trick implementation since all 'set' methods
+  // are protected by default.
+  // clear: whether clear the original CUDAStream or not
+  void SetXPUCUDAStream(XPUCUDAStream*, bool clear = true);
 
   const Place& GetPlace() const override;
 

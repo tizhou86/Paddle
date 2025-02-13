@@ -50,6 +50,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/distributed/collective/async_load.h"
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 #endif
 
@@ -1424,6 +1425,92 @@ void BindDistributed(py::module *m) {
           .def_static("group_end",
                       distributed::ProcessGroupBKCL::GroupEnd,
                       py::call_guard<py::gil_scoped_release>());
+
+  py::class_<distributed::AsyncLoad::Task,
+             std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
+      .def("is_completed",
+           &distributed::AsyncLoad::Task::IsCompleted,
+           py::call_guard<py::gil_scoped_release>())
+      .def("xpu_wait",
+           &distributed::AsyncLoad::Task::XpuSynchronize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("cpu_wait",
+           &distributed::AsyncLoad::Task::CpuSynchronize,
+           py::call_guard<py::gil_scoped_release>());
+
+                      
+  auto AsyncLoad =
+      py::class_<distributed::AsyncLoad>(*m, "AsyncLoad")
+          .def(py::init<>())
+          .def(
+              "offload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                py::gil_scoped_release release;
+
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Offload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"))
+          .def(
+              "offload_with_offset",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor,
+                 size_t dst_offset,
+                 size_t src_offset,
+                 size_t offload_size) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.OffloadWithOffset(
+                    dst_dense, src_dense, dst_offset, src_offset, offload_size);
+              },
+              py::arg("dst"),
+              py::arg("src"),
+              py::arg("dst_offset"),
+              py::arg("src_offset"),
+              py::arg("offload_size"),
+              py::call_guard<py::gil_scoped_release>())
+          .def(
+              "reload",
+              [](distributed::AsyncLoad &self,
+                 py::handle py_dst_tensor,
+                 py::handle py_src_tensor) {
+                auto dst_tensor = CastPyArg2Tensor(py_dst_tensor.ptr(), 0);
+                auto src_tensor = CastPyArg2Tensor(py_src_tensor.ptr(), 0);
+                py::gil_scoped_release release;
+
+                auto p_dst_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    dst_tensor.impl());
+                auto *dst_dense = p_dst_tensor.get();
+
+                auto p_src_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    src_tensor.impl());
+                auto src_dense = *p_src_tensor;
+
+                return self.Reload(dst_dense, src_dense);
+              },
+              py::arg("dst"),
+              py::arg("src"));
 #endif
 
   py::class_<distributed::ProcessGroup::Task,

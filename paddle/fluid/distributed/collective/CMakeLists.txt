@@ -33,6 +33,11 @@ if(WITH_XPU_BKCL)
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
     DEPS process_group phi)
+
+  cc_library(
+    async_load
+    SRCS async_load.cc
+    DEPS process_group phi ${DEVICE_EVENT_LIBS})
 endif()
 
 if(WITH_MPI)

@@ -1,29 +1,14 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# manipulation.py (XPU Version, original structure)
+# (c) 2023-2025 PaddlePaddle Authors
 
 import copy
 
 import paddle
-from paddle import _C_ops
 from paddle.base import core
-from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import EagerParamBase
-from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 __all__ = []
-
 
 # TODO(qili93): remove this op after custom op and custom device
 # integrated and then move this op along with its code to plugin.
@@ -87,7 +72,19 @@ def _npu_identity(x, format=-1):
         return out
 
 
+def create_async_load():
+    """
+    Constructs a new AsyncLoad object. 
+    It is used to load/reload data asynchronously on XPU.
+    """
+    return core.AsyncLoad()
+
+
 def _load_reload_impl(src_tensor, func):
+    """
+    Helper to create a new destination tensor and call 'func(dst, src)' 
+    which is either offload or reload.
+    """
     if isinstance(src_tensor, EagerParamBase):
         state = copy.deepcopy(src_tensor.__dict__)
         new_param = EagerParamBase(src_tensor.shape, src_tensor.dtype, **state)
@@ -99,39 +96,18 @@ def _load_reload_impl(src_tensor, func):
         return new_varbase, task
 
 
-def create_async_load():
-    """Constructs a new AsyncLoad object. It is used to load/reload data asynchronously."""
-    return core.AsyncLoad()
-
-
 def async_offload(src_tensor, async_load):
     """
-    Loads the source tensor into the destination tensor asynchronously.
-
-    Args:
-        src_tensor (EagerParamBase|paddle.Tensor): The source tensor.
-        async_load (core.AsyncLoad): The AsyncLoad object.
-
-    Returns:
-        tuple: A tuple containing two elements:
-         - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
-         - task (Task): The task that loads the source tensor into the destination tensor.
+    Loads the source XPU tensor into a pinned/CPU tensor asynchronously.
+    Returns (dest_tensor, task).
     """
     return _load_reload_impl(src_tensor, async_load.offload)
 
 
 def async_reload(src_tensor, async_load):
     """
-    Reloads the source tensor into the destination tensor asynchronously.
-
-    Args:
-        src_tensor (EagerParamBase|paddle.Tensor): The source tensor.
-        async_load (core.AsyncLoad): The AsyncLoad object.
-
-    Returns:
-        tuple: A tuple containing two elements:
-         - dest_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
-         - task (Task): The task that reloads the source tensor into the destination tensor.
+    Reloads the source pinned/CPU tensor back into an XPU tensor asynchronously.
+    Returns (dest_tensor, task).
     """
     return _load_reload_impl(src_tensor, async_load.reload)
 
@@ -140,22 +116,14 @@ def async_offload_with_offset(
     src_tensor, dst_tensor, src_offset, dst_offset, offload_size, async_loader
 ):
     """
-    Offloading the source tensor into the destination tensor asynchronously with offset and size customized.
+    Offload from XPU src_tensor to pinned/CPU dst_tensor with offset/size.
 
-    Args:
-        src_tensor (EagerParamBase|paddle.Tensor): The source tensor.
-        dst_tensor (EagerParamBase|paddle.Tensor): The destination tensor.
-        src_offset (int): The element offset of the source tensor.
-        dst_offset (int): The element offset of the destination tensor.
-        offload_size (int): The size of the data to be loaded.
-        async_loader (core.AsyncLoad): The AsyncLoad object.
-
-    Returns:
-        task (Task): The task that operates partial offloading.
+    Returns a task (AsyncLoad::Task).
     """
     assert len(src_tensor.shape) <= 1, "Only support 1-D tensor"
     assert len(dst_tensor.shape) <= 1, "Only support 1-D tensor"
     assert src_tensor.dtype == dst_tensor.dtype, "Only support same dtype"
+
     return async_loader.offload_with_offset(
         dst_tensor, src_tensor, dst_offset, src_offset, offload_size
     )

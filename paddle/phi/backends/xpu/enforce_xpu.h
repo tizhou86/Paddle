@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
+#include <cuda_runtime.h>
+#include <cuda.h>
 
 namespace phi {
 namespace backends {
@@ -79,8 +81,7 @@ inline const char* xpuGetErrorString(int stat) {
     case XPUERR_DMATIMEOUT:
       return "DMA timed out, a reboot maybe needed";
     case XPUERR_DMAABORT:
-      return "DMA aborted due to error, possibly wrong address or hardware "
-             "state";
+      return "DMA aborted due to error, possibly wrong address or hardware state";
     case XPUERR_MCUUNINIT:
       return "Firmware not initialized";
     case XPUERR_OLDFW:
@@ -153,6 +154,7 @@ namespace details {
 template <typename T>
 struct ExternalApiType {};
 
+// Macro to define the external API type specialization
 #define DEFINE_EXTERNAL_API_TYPE(type, success_value) \
   template <>                                         \
   struct ExternalApiType<type> {                      \
@@ -160,9 +162,14 @@ struct ExternalApiType {};
     static constexpr Type kSuccess = success_value;   \
   }
 
+// Existing specializations for XPU
 DEFINE_EXTERNAL_API_TYPE(int, XPU_SUCCESS);
 #ifdef PADDLE_WITH_XPU_BKCL
 DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
+#endif
+// Added specialization for cudaError_t to support CUDA errors in XPU enforcement.
+#ifdef PADDLE_WITH_XPU
+DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
 #endif
 
 #undef DEFINE_EXTERNAL_API_TYPE
@@ -203,6 +210,7 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
   } while (0)
+
 #define PADDLE_ENFORCE_XRE_SUCCESS(COND)                            \
   do {                                                              \
     auto __cond__ = (COND);                                         \

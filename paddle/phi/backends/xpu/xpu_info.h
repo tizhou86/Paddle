@@ -12,6 +12,8 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+#include <cuda_runtime.h>
+#include <cuda.h>
 
 #include "paddle/phi/common/place.h"
 
@@ -43,6 +45,11 @@ int GetXPUCurrentDeviceId();
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetXPUSelectedDevices();
+
+std::pair<int, int> GetXpuStreamPriorityRange();
+
+//! Blocks until stream has completed all operations.
+void XpuStreamSync(cudaStream_t stream);
 
 /***** Memory Management *****/
 //! Get the minimum chunk size for XPU buddy allocator.
