@@ -35,6 +35,8 @@ const char *AllocationTypeStr(AllocationType type) {
       return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
+    case AllocationType::XPUPINNED:
+      return "xpu_pinned";
     case AllocationType::IPU:
       return "ipu";
     case AllocationType::CUSTOM:
@@ -61,6 +63,7 @@ std::string Place::DebugString() const {
     os << AllocationTypeStr(alloc_type_);
   }
   if (alloc_type_ == AllocationType::GPUPINNED ||
+      alloc_type_ == AllocationType::XPUPINNED ||
       alloc_type_ == AllocationType::CPU) {
     os << ")";
   } else {
@@ -78,6 +81,9 @@ Place GetPinnedPlace(const Place &place) {
   switch (place.GetType()) {
     case AllocationType::GPU:
       return phi::GPUPinnedPlace();
+      break;
+    case AllocationType::XPU:
+      return phi::XPUPinnedPlace();
       break;
     default:
       return place;
@@ -175,6 +181,10 @@ bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
 }
 
+bool is_xpu_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::XPUPINNED;
+}
+
 bool is_custom_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CUSTOM;
 }
@@ -201,7 +211,7 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 
 bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
-    if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
+    if (is_cpu_place(p1) || is_cuda_pinned_place(p1) || is_xpu_pinned_place(p1)) {
       return true;
     } else {
       return p1 == p2;

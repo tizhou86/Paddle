@@ -471,4 +471,21 @@ void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
 }
 
 void XPUContext::Init() { impls_[0]->Init(); }
+
+// #if defined(PADDLE_WITH_XPU)
+// XPUPinnedContext::XPUPinnedContext() {
+//   eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
+// }
+
+// XPUPinnedContext::XPUPinnedContext(XPUPinnedPlace place) : place_(place) {
+//   eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
+// }
+
+// Eigen::DefaultDevice* XPUPinnedContext::eigen_device() const {
+//   return eigen_device_.get();
+// }
+
+// const Place& XPUPinnedContext::GetPlace() const { return place_; }
+// #endif
+
 }  // namespace phi

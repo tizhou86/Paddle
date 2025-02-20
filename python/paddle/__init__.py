@@ -151,6 +151,7 @@ from .distributed import DataParallel
 from .framework import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
+    XPUPinnedPlace,
     CUDAPlace,
     CustomPlace,
     IPUPlace,
@@ -1120,6 +1121,7 @@ __all__ = [
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
+    'XPUPinnedPlace',
     'logical_not',
     'logical_not_',
     'add_n',

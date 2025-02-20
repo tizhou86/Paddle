@@ -109,4 +109,27 @@ using KPSContext = XPUContext;
 
 }  // namespace phi
 
+// namespace phi {
+// #if defined(PADDLE_WITH_XPU)
+// // Currently, XPUPinnedContext is only used to data copying.
+// class XPUPinnedContext
+//     : public DeviceContext,
+//       public phi::TypeInfoTraits<DeviceContext, XPUPinnedContext> {
+//  public:
+//   XPUPinnedContext();
+//   explicit XPUPinnedContext(XPUPinnedPlace place);
+
+//   const Place& GetPlace() const override;
+
+//   Eigen::DefaultDevice* eigen_device() const;
+
+//   static const char* name() { return "XPUPinnedContext"; }
+
+//  private:
+//   XPUPinnedPlace place_;
+//   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+// };
+// #endif
+// }  // namespace phi
+
 #endif

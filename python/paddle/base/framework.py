@@ -8205,6 +8205,7 @@ def _get_paddle_place(place):
             core.XPUPlace,
             core.CPUPlace,
             core.CUDAPinnedPlace,
+            core.XPUPinnedPlace,
             core.CUDAPlace,
             core.IPUPlace,
             core.CustomPlace,
@@ -8257,6 +8258,8 @@ def _get_paddle_place(place):
             )
         if place == "xpu":
             return core.XPUPlace(0)
+        elif place == "xpu_pinned":
+            return core.XPUPinnedPlace()
         else:
             place_info_list = place.split(":", 1)
             device_id = place_info_list[1]
@@ -8284,7 +8287,7 @@ def _get_paddle_place(place):
         return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 

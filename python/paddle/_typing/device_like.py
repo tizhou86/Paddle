@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from paddle import (
         CPUPlace,
         CUDAPinnedPlace,
+        XPUPinnedPlace,
         CUDAPlace,
         CustomPlace,
         IPUPlace,
@@ -31,6 +32,7 @@ _Place: TypeAlias = Union[
     "CPUPlace",
     "CUDAPlace",
     "CUDAPinnedPlace",
+    "XPUPinnedPlace",
     "IPUPlace",
     "CustomPlace",
     "XPUPlace",

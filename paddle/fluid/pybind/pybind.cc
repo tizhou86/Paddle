@@ -2279,6 +2279,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
+              const phi::XPUPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
               const phi::CustomPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);

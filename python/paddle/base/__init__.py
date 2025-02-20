@@ -64,6 +64,7 @@ from .compiler import (  # noqa: F401
 from .core import (  # noqa: F401
     CPUPlace,
     CUDAPinnedPlace,
+    XPUPinnedPlace,
     CUDAPlace,
     CustomPlace,
     DenseTensor,
