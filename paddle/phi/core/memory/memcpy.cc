@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
+#include <cuda.h>
+#include <cuda_runtime.h>
 #endif
 
 namespace paddle::memory {
@@ -352,6 +354,143 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
       VLOG(4) << "cannot fit into a copy stereotype, might be an error";
     }
   }
+}
+
+template <>
+void Copy<phi::CPUPlace, phi::XPUPinnedPlace>(phi::CPUPlace dst_place,
+                                              void* dst,
+                                              phi::XPUPinnedPlace src_place,
+                                              const void* src,
+                                              size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+TEST_API void Copy<phi::XPUPinnedPlace, phi::CPUPlace>(
+    phi::XPUPinnedPlace dst_place,
+    void* dst,
+    phi::CPUPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<phi::XPUPinnedPlace, phi::XPUPinnedPlace>(
+    phi::XPUPinnedPlace dst_place,
+    void* dst,
+    phi::XPUPinnedPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<phi::XPUPinnedPlace, phi::XPUPlace>(phi::XPUPinnedPlace dst_place,
+                                              void* dst,
+                                              phi::XPUPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
+  if (UNLIKELY(num == 0)) return;
+  platform::SetXPUDeviceId(src_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by stream(" << stream << ")";
+  if (stream) {
+    phi::RecordEvent record_event(
+        "cudaMemcpyAsync:XPU->XPUPinned", phi::TracerEventType::UserDefined, 1);
+    cudaMemcpyAsync(dst,
+                             src,
+                             num,
+                             cudaMemcpyDeviceToHost,
+                             reinterpret_cast<cudaStream_t>(stream));
+
+  } else {
+    phi::RecordEvent record_event(
+        "cudaMemcpy:XPU->XPUPinned", phi::TracerEventType::UserDefined, 1);
+    cudaMemcpy(dst, src, num, cudaMemcpyDeviceToHost);
+  }
+}
+
+template <>
+void Copy<phi::XPUPlace, phi::XPUPinnedPlace>(phi::XPUPlace dst_place,
+                                              void* dst,
+                                              phi::XPUPinnedPlace src_place,
+                                              const void* src,
+                                              size_t num,
+                                              void* stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  platform::SetXPUDeviceId(dst_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by stream(" << stream << ")";
+  if (stream) {
+    phi::RecordEvent record_event(
+        "cudaMemcpyAsync:XPUPinned->XPU", phi::TracerEventType::UserDefined, 1);
+    cudaMemcpyAsync(dst,
+                             src,
+                             num,
+                             cudaMemcpyHostToDevice,
+                             reinterpret_cast<cudaStream_t>(stream));
+
+  } else {
+    phi::RecordEvent record_event(
+        "cudaMemcpy:XPUPinned->XPU", phi::TracerEventType::UserDefined, 1);
+    cudaMemcpy(dst, src, num, cudaMemcpyHostToDevice);
+  }
+}
+
+
+
+// NOTE: only for (CPUPlace, CUDAPlace and CUDAPinnedPlace) -> (CUDAPinnedPlace)
+template <>
+void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
+                                           void* dst,
+                                           phi::Place src_place,
+                                           const void* src,
+                                           size_t num,
+                                           void* stream) {
+  Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, stream);
+}
+
+// NOTE: only for (CUDAPinnedPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace)
+template <>
+void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
+                                           void* dst,
+                                           phi::XPUPinnedPlace src_place,
+                                           const void* src,
+                                           size_t num,
+                                           void* stream) {
+  Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
+}
+
+// NOTE: only for (CPUPlace) -> (CUDAPinnedPlace)
+template <>
+void Copy<phi::XPUPinnedPlace, phi::Place>(phi::XPUPinnedPlace dst_place,
+                                           void* dst,
+                                           phi::Place src_place,
+                                           const void* src,
+                                           size_t num) {
+  Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, nullptr);
+}
+
+// NOTE: only for (CUDAPinnedPlace) -> (CPUPlace)
+template <>
+void Copy<phi::Place, phi::XPUPinnedPlace>(phi::Place dst_place,
+                                           void* dst,
+                                           phi::XPUPinnedPlace src_place,
+                                           const void* src,
+                                           size_t num) {
+  Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, nullptr);
 }
 
 #endif

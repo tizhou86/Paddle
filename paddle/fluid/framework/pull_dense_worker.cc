@@ -98,7 +98,7 @@ void PullDenseWorker::CreatePinVar() {
       pin_tensor->mutable_data<float>(tensor->dims(), phi::GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_XPU
-      pin_tensor->mutable_data<float>(tensor->dims(), phi::CPUPlace());
+      pin_tensor->mutable_data<float>(tensor->dims(), phi::XPUPinnedPlace());
 #endif
     }
   }
@@ -150,7 +150,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 #ifdef PADDLE_WITH_XPU
         memory::Copy(places_[i],
                      w,
-                     phi::CPUPlace(),
+                     phi::XPUPinnedPlace(),
                      pin_w,
                      sizeof(float) * tensor->numel());
 #endif

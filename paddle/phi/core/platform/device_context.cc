@@ -115,6 +115,8 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
                                 xpu_ctx->stream());
     }
     dev_ctx->SetAllocator(instance.GetAllocator(p, xpu_ctx->stream()).get());
+    dev_ctx->SetPinnedAllocator(
+        instance.GetAllocator(phi::XPUPinnedPlace()).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -217,6 +219,18 @@ void EmplaceDeviceContexts(
           common::errors::Unimplemented("XPUPlace is not supported. Please "
                                         "re-compile with WITH_XPU option."));
 #endif
+    } else if (phi::is_xpu_pinned_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+      EmplaceDeviceContext<phi::XPUPinnedContext>(
+          place_to_device_context,
+          place,
+          disable_setting_default_stream_for_allocator,
+          /*unused*/ stream_priority);
+#else
+      PADDLE_THROW(common::errors::Unimplemented(
+          "XPUPinnedPlace is not supported. Please re-compile with WITH_XPU "
+          "option."));
+#endif
     } else if (place.GetType() == phi::AllocationType::CUSTOM) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       EmplaceDeviceContext<phi::CustomContext>(
@@ -239,7 +253,7 @@ void EmplaceDeviceContexts(
           /*unused*/ stream_priority);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
-          "GPUPlace is not supported. Please re-compile with WITH_GPU "
+          "GPUPinnedPlace is not supported. Please re-compile with WITH_GPU "
           "option."));
 #endif
     } else if (phi::is_ipu_place(place)) {

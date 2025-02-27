@@ -37,6 +37,11 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda_runtime.h>
+#include <cuda.h>
+#endif
+
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler/mem_tracing.h"
 
@@ -283,6 +288,87 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
 #endif
+
+
+#ifdef PADDLE_WITH_XPU
+// XPU PINNED memory allows direct DMA transfers by the XPU to and from system
+// memory. It’s locked to a physical address.
+void* XPUPinnedAllocator::Alloc(size_t* index, size_t size) {
+  if (size <= 0) return nullptr;
+
+  // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
+  // of host pinned allocation. Allocates too much would reduce
+  // the amount of memory available to the underlying system for paging.
+  size_t usable =
+      phi::backends::cpu::CUDAPinnedMaxAllocSize() - xpu_pinned_alloc_size_;
+
+  if (size > usable) {
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB pinned memory."
+                 << ", available " << usable / 1024.0 / 1024.0
+                 << " MB";  // NOLINT
+    return nullptr;
+  }
+
+  void* p;
+// PINNED memory is visible to all CUDA contexts.
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+
+  if (result == cudaSuccess) {
+    *index = 1;  // PINNED memory
+    xpu_pinned_alloc_size_ += size;
+    HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+    platform::RecordMemEvent(
+        p, CPUPlace(), size, phi::TracerMemEventType::ReservedAllocate);
+    return p;
+  } else {
+    LOG(WARNING) << "cudaHostAlloc failed.";
+    return nullptr;
+  }
+
+  return nullptr;
+}
+
+void XPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  cudaError_t err;
+  PADDLE_ENFORCE_EQ(index,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The index should be 1, but got %d", index));
+
+  PADDLE_ENFORCE_GE(xpu_pinned_alloc_size_,
+                    size,
+                    common::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated cuda pinned memory (%d)",
+                        size,
+                        xpu_pinned_alloc_size_));
+  xpu_pinned_alloc_size_ -= size;
+  err = cudaFreeHost(p);
+
+  // Purposefully allow cudaErrorCudartUnloading, because
+  // that is returned if you ever call cudaFreeHost after the
+  // driver has already shutdown. This happens only if the
+  // process is terminating, in which case we don't care if
+  // cudaFreeHost succeeds.
+  if (err != cudaErrorCudartUnloading) {
+    PADDLE_ENFORCE_EQ(
+        err,
+        0,
+        common::errors::Fatal(
+            "cudaFreeHost failed in XPUPinnedAllocator, error code is %d",
+            err));
+  }
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, phi::TracerMemEventType::ReservedFree);
+}
+
+bool XPUPinnedAllocator::UseGpu() const { return false; }
+#endif
+
+
+
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void* CustomAllocator::Alloc(size_t* index, size_t size) {

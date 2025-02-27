@@ -25,7 +25,7 @@ namespace platform {
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
-  XPU = 3,
+  XPU = 2,
   IPU = 4,
   CUSTOM_DEVICE = 6,
 
